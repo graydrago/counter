@@ -18,7 +18,9 @@ Usage:
     {$argv[0]} [file|-]
 
 Examples:
-    {$argv[0]} some_file
+    {$argv[0]} /dev/urandom
+
+    CTRL+C for exit.
 
     echo '10' | {$argv[0]} -
 
@@ -31,13 +33,13 @@ HERE;
 // ----- ARGS -----
 
 $fileName = $argv[1];
-$file = null;
+$FILE = null;
 if (strcmp($fileName, '-') === 0) {
-    $file = STDIN;
+    $FILE = STDIN;
 } else {
     if (file_exists($fileName)) {
-        $file = fopen($fileName, 'rb');
-        if ($file === false) {
+        $FILE = fopen($fileName, 'rb');
+        if ($FILE === false) {
             fprintf(STDERR, "Can't open '{$fileName}'\n");
             exit(STAT_FILE_NOT_OPENED);
         }
@@ -53,19 +55,20 @@ $STATE = 'getNumber';
 $FOUND_DIGITS = [];
 
 $read_bites = 0;
-while (($data = fread($file, BUF_SIZE)) !== false) {
+while (($data = fread($FILE, BUF_SIZE)) !== false) {
     $len = strlen($data);
     for ($i = 0; $i < $len; $i++) {
         $STATE($data[$i]);
         $read_bites++;
     }
 
-    //echo "{$read_bites} bites was read\r";
+    // echo "{$read_bites} bites was read\r";
 
-    if (feof($file)) {
+    if (feof($FILE)) {
         break;
     }
 }
+fclose($FILE);
 
 if ($read_bites > 0) {
     echo "{$read_bites} bites was read\n";
@@ -78,6 +81,7 @@ if ($data === false) {
 } else {
     printResult($FOUND_DIGITS);
 }
+
 
 // ----- FUNCTIONS -----
 
@@ -144,7 +148,9 @@ function printResult(&$resultArray) {
 }
 
 function signalHandler($signal) {
-    global $FOUND_DIGITS;
+    global $FOUND_DIGITS, $FILE;
+
+    fclose($FILE);
 
     if ($signal === SIGINT) {
         printResult($FOUND_DIGITS);
